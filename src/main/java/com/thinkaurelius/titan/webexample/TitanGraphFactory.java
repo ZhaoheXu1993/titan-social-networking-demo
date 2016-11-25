@@ -136,8 +136,8 @@ public class TitanGraphFactory {
                         associationVertex.addEdge(HAS_MEMBER, studentVertex);
                     }
 
-                    /* Randomly assign 2 interests for this student */
-                    for (int z = 0; z < 2; z++) {
+                    /* Randomly assign 3 interests for this student */
+                    for (int z = 0; z < 3; z++) {
                         Vertex interestVertex = graph.getVertices(INTEREST, INTEREST_COLLECTION[randomNumGernerator.nextInt(INTEREST_COLLECTION.length)]).next();
                         studentVertex.addEdge(LIKES, interestVertex);
                         interestVertex.addEdge(HAS_PEOPLE_INTERESTEDIN, studentVertex);

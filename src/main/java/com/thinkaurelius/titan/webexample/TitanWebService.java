@@ -23,7 +23,7 @@ public class TitanWebService {
     GroovyGraphOp groovyOp;
 
     @Autowired
-    JavaGraphOp javaOp;
+    JavaGraphOp operationHandeler;
 
     @PostConstruct
     private void init() {
@@ -34,7 +34,7 @@ public class TitanWebService {
     @Path("/getVerticesCount")
     @Produces(MediaType.TEXT_PLAIN)
     public String getVerticesCount(@Context UriInfo info) throws JSONException {
-        String res = javaOp.getVerticesCount();
+        String res = operationHandeler.getVerticesCount();
         return "\"" + res + "\"";
     }
 
@@ -42,7 +42,7 @@ public class TitanWebService {
     @Path("/school/uf")
     @Produces(MediaType.TEXT_PLAIN)
     public String getPersonBySchoolName(@Context UriInfo info) throws JSONException {
-        String res = javaOp.getPersonByEdge("name", "UF", "studyIn");
+        String res = operationHandeler.getPersonByEdge("name", "UF", "studyIn");
         return "\"" + res + "\"";
     }
 
@@ -50,7 +50,7 @@ public class TitanWebService {
     @Path("/interest/football")
     @Produces(MediaType.TEXT_PLAIN)
     public String getPersonByInterestName(@Context UriInfo info) throws JSONException {
-        String res = javaOp.getPersonByEdge("name", "football", "interestIn");
+        String res = operationHandeler.getPersonByEdge("name", "football", "interestIn");
         return "\"" + res + "\"";
     }
 
@@ -59,7 +59,7 @@ public class TitanWebService {
     @Path("/search/JoeToKobe")
     @Produces(MediaType.TEXT_PLAIN)
     public String shortestPath(@Context UriInfo info) throws JSONException {
-        String res = javaOp.getDegree("Joe", "Kobe");
+        String res = operationHandeler.getDegree("Joe", "Kobe");
         return "\"" + res + "\"";
     }
 
@@ -67,7 +67,7 @@ public class TitanWebService {
     @Path("/recommend/Joe")
     @Produces(MediaType.TEXT_PLAIN)
     public String getRecommend(@Context UriInfo info) throws JSONException {
-        String res = javaOp.getRecommend("Joe");
+        String res = operationHandeler.getRecommend("Joe");
         return "\"" + res + "\"";
     }
 
@@ -76,7 +76,7 @@ public class TitanWebService {
     @Path("/rank/Joe")
     @Produces(MediaType.TEXT_PLAIN)
     public String listVertices(@Context UriInfo info) throws JSONException {
-        String res = javaOp.listVertices();
+        String res = operationHandeler.listVertices();
         return "\"" + res + "\"";
     }
     */
@@ -84,7 +84,7 @@ public class TitanWebService {
     @Path("/listVertices/name")
     @Produces(MediaType.TEXT_PLAIN)
     public String listVertices(@Context UriInfo info) throws JSONException {
-        String res = javaOp.listVertices();
+        String res = operationHandeler.listVertices();
         return "\"" + res + "\"";
     }
 
