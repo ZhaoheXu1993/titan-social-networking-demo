@@ -289,6 +289,10 @@ public class JavaGraphOp {
     }
 
 
+
+
+    /********** Old code TBD what to do *************/
+
     public String getRecommend(String person) {
         String res = getPersonByEdge("name", "UF", "studyIn");
         res += getPersonByEdge("name", "football", "interestIn");
