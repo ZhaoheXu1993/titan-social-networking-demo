@@ -274,6 +274,8 @@ public class JavaGraphOp {
      *         We at most return 5 people to the user.
      * TODO: the input format for the friends.
      * TODO: Decide the format for the output. (List? String? Map?)
+     *
+     * TEST IS DONE.
      */
     public Map<String, Integer> getFriendsRecommend(String myName, String friendsNames) {
         if (myName == null || myName.length() == 0 || friendsNames == null || friendsNames.length() == 0) {

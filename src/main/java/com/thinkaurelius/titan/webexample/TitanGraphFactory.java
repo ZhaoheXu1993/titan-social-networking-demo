@@ -64,8 +64,8 @@ public class TitanGraphFactory {
     private static final String[] INTEREST_COLLECTION = {"basketball", "football", "soccer", "swimming", "running", "tennis", "volleyball", "beach volleyball",
             "body building", "vedio games", "cooking", "baseball"};
     private static final String[] SCHOOL_COLLECTION = {"UF", "UCF", "SFU", "FIU"};
-    private static final String[] MAJOR_COLLECTION = {"computer science", "computer engineering", "photographing", "chemical engineering", "mechanical engineer",
-            "electronical engineering", "jornalism", "physics"};
+    private static final String[] MAJOR_COLLECTION = {"computer science", "computer engineering", "photographing", "chemical engineering",
+            "mechanical engineer", "electronical engineering", "jornalism", "physics"};
     private static final String[] ASSOCIATION_COLLECTION = {"beach volleyball team", "swimming team", "fraternity", "football team", "tennis team"};
 
     // One graph to rule them all...

@@ -32,7 +32,7 @@ public class TitanWebService {
     }
 
     @GET
-    @Path("/friendRecommend")
+    @Path("/friendRecommend/{name}/{school}")
     @Produces(MediaType.TEXT_PLAIN)
     public String getRecommand(@Context UriInfo info) throws JSONException {
         String myName = "UF--student--1";
