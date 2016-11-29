@@ -1,13 +1,20 @@
 package com.thinkaurelius.titan.webexample;
 
 import com.tinkerpop.blueprints.Direction;
+import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
+import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversalSource;
 import org.apache.tinkerpop.gremlin.structure.Edge;
 import org.apache.tinkerpop.gremlin.structure.Graph;
+import org.apache.tinkerpop.gremlin.structure.T;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
+
+import static org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__.both;
+import static org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__.is;
+import static org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__.out;
 
 @Component
 public class JavaGraphOp {
@@ -47,6 +54,16 @@ public class JavaGraphOp {
         this.g = gf.getGraph();
     }
 
+
+    /**
+     * Thrown when we did not find the vertex that we are looking for in our database.
+     */
+    private class RequiredVertexNotFoundException extends RuntimeException {
+        public RequiredVertexNotFoundException(String cause) {
+            super(cause);
+        }
+    }
+
     /**
      * When a new user input his data into the system, we should firstly insert
      * a new node representing this user, and connect to other node as necessay.
@@ -60,28 +77,31 @@ public class JavaGraphOp {
      * @param school Name of the school the user goes to
      * @return List of people who also attend to the same school
      */
-    public List<String> getPeopleInTheSameSchool(String school) {
+    public Map<String, String> getPeopleInTheSameSchool(String school) {
         if (school == null || school.length() == 0) {
-            return "";
+            return new HashMap<>();
         }
 
-        Vertex schoolVertex = g.traversal().V().has("name", school).next();
+//        Vertex schoolVertex = g.traversal().V().has("name", school).next();
+//        System.out.println("For school: " + school + " we found vertex " + schoolVertex);
+//        if (schoolVertex == null) {
+//            throw new RequiredVertexNotFoundException("Looking for school " + school +
+//                    ", but did not found existing information in our database :(");
+//        }
+        List<Vertex> studentsInThisSchool = g.traversal().V().has("name", school).outE(HAS_STUDENT).inV().toList();
+        //System.out.println("For school " + school + " we found " + studentsInThisSchool.size() + " studys there");
 
-        System.out.println("For school: " + school + " we found vertex " + schoolVertex);
-
-        if (schoolVertex == null) {
-            throw new RequiredInfoNotFoundException("Looking for school " + school +
-                    ", but did not found existing information in our database :(");
-        }
-        List<Vertex> studentsInThisSchool = schoolVertex.outE(HAS_STUDENT).outV().inV().toList();
-        System.out.println("For school " + school + " we found " + studentsInThisSchool.size() + " studys there");
-
-        List<String> result = new ArrayList<>();
+        HashMap<String, String> result = new HashMap<>();
         for (Vertex vertex : studentsInThisSchool) {
-            String name = (String) vertex.property("name").value();
-            result.add(name);
-            System.out.println("Adding student " + name);
+            if (vertex.edges(org.apache.tinkerpop.gremlin.structure.Direction.OUT, STUDIES).hasNext()) {
+                Vertex majorVtx = vertex.edges(org.apache.tinkerpop.gremlin.structure.Direction.OUT, STUDIES).next().inVertex();
+                String name = (String) vertex.property("name").value();
+                String majorName = (String) majorVtx.property("name").value();
+                result.put(name, majorName);
+            }
+            //System.out.println("Adding student " + name);
         }
+
         return result;
     }
 
@@ -90,41 +110,47 @@ public class JavaGraphOp {
      *        the same major
      * @return List of student names.
      */
-    public List<String> getPeopleWithSameMajor(String major, String school) {
+    public Map<String, String> getPeopleWithSameMajor(String major, String school) {
         if (major == null || major.length() == 0 || school == null || school.length() == 0) {
-            return "";
+            return new HashMap<>();
         }
 
-        Vertex schoolVertex = g.traversal().V().has("name", school).next();
-        System.out.println("For school: " + school + " we found vertex " + schoolVertex);
-
-        if (schoolVertex == null) {
-            return "";
-        }
-
+        //Vertex schoolVertex = g.traversal().V().has("name", school).next();
+        //System.out.println("For school: " + school + " we found vertex " + schoolVertex);
         // Put all students in the same school into a set
-        List<Vertex> studentsInThisSchool = schoolVertex.outE(HAS_STUDENT).inV().toList();
-        System.out.println("For school " + school + " we found " + studentsInThisSchool.size() + " studys there");
+        List<Vertex> studentsInThisSchool = g.traversal().V().has("name", school).outE(HAS_STUDENT).inV().toList();
+        //System.out.println("For school " + school + " we found " + studentsInThisSchool.size() + " studys there");
 
-        Set<String> students = new HashSet<>();
+        Map<String, String> result = new HashMap<>();
         for (Vertex vertex : studentsInThisSchool) {
-            String name = (String) vertex.property("name").value();
-            students.add(name);
-            System.out.println("Adding student " + name + " to school set");
+            if (!vertex.edges(org.apache.tinkerpop.gremlin.structure.Direction.OUT, STUDIES).hasNext()) {
+                continue;
+            }
+
+            if (vertex.edges(org.apache.tinkerpop.gremlin.structure.Direction.OUT, STUDIES)
+                    .next().inVertex().property("name").value().equals(major)) {
+                String name = (String) vertex.property("name").value();
+                if (vertex.edges(org.apache.tinkerpop.gremlin.structure.Direction.OUT, LIKES).hasNext()) {
+                    String interestName = (String)vertex.edges(org.apache.tinkerpop.gremlin.structure.Direction.OUT, LIKES)
+                            .next().inVertex().property("name").value();
+                    result.put(name, interestName);
+                }
+            }
+            //System.out.println("Adding student " + name + " to school set");
         }
 
         // Check each of this person if they attends this school
-        Vertex majorVertex = g.traversal().V().has("name", major).next();
-        List<String> result = new ArrayList<>();
-        for (Vertex vertex : majorVertex.outE().inV().toList()) {
-            String name = vertex.property("name").value();
-            if (students.contains(name)) {
-                System.out.println("Student " + name + " is in school" + school + " and study " + major);
-                result.add(name)''
-            }
-        }
-
-        System.out.println("We found " + result.size() + " Students that attends " + school + " and study " + major);
+//        Vertex majorVertex = g.traversal().V().has("name", major).next();
+//        List<String> result = new ArrayList<>();
+//        for (Vertex vertex : majorVertex.outE().inV().toList()) {
+//            String name = (String)vertex.property("name").value();
+//            if (students.contains(name)) {
+//                System.out.println("Student " + name + " is in school" + school + " and study " + major);
+//                result.add(name);
+//            }
+//        }
+//
+//        System.out.println("We found " + result.size() + " Students that attends " + school + " and study " + major);
         return result;
     }
 
@@ -137,37 +163,45 @@ public class JavaGraphOp {
      *       What is the proper return type for this funtion? (I think a map would be better?)
      *       Here I assume the interests would a string separated by ','.
      */
-    public List<String> getPeopleWithSameInterestsInSchool(String interests, String school) {
+    public Map<String, String> getPeopleWithSameInterestsInSchool(String interests, String school) {
         if (interests == null || interests.length() == 0 || school == null || school.length() == 0) {
-            return "";
+            return new HashMap<>();
         }
 
-        Vertex schoolVertex = g.traversal.has("name", school).next();
-        if (schoolVertex == null) {
-            return "";
-        }
-
-        String[] allInterests = interests.split(", ");
-        Set<String> interestsSet = new HashSet<>();
-        for (String element : allInterests) {
-            interestsSet.add(element);
-        }
-
+        List<String> interestList = new ArrayList<>(Arrays.asList(interests.split("_")));
+        Set<String> interestSet = new HashSet<>(interestList);
+        int minReq = interestSet.size() / 2 + 1;
         /*
          * We firstly get back all students that attends the same school, then check one
          * by one whether they share same interests or not.
          */
         // TODO: we should be more specific about this, e.g.: A --> basketball, B --> football.
-        List<String> result = new ArrayList<>();
-        List<Vertex> studentsInSameSchool = g.traversal.has("name", school).outE(HAS_STUDENT).inV().toList();
+        List<Vertex> studentsInSameSchool = g.traversal().V().has("name", school).outE(HAS_STUDENT).inV().toList();
+        Map<String, String> result = new HashMap<>();
         for (Vertex studentVertex : studentsInSameSchool) {
-            for (Vertex interestVertex : studentVertex.outE(LIKES).inV().toList()) {
-                if (interestsSet.contains((String) interestVertex.property("name").value())) {
-                    String foundOne = (String)studentVertex.property("name").value()
-                    result.add(foundOne);
-                    System.out.println("Found " + foundOne + " who also likes playing " + (String) interestVertex.property("name").value());
-                    break; /* Go check for next possible person so that we will not have duplicates */
+            int interestCount = 0;
+            Iterator<Edge> interestIter = studentVertex.edges(org.apache.tinkerpop.gremlin.structure.Direction.OUT, LIKES);
+            while(interestIter.hasNext()) {
+                Edge interestEdge = interestIter.next();
+                Vertex interestVertex = interestEdge.inVertex();
+                if (interestSet.contains((String)interestVertex.property("name").value())) {
+                    interestCount++;
+                    if (studentVertex.edges(org.apache.tinkerpop.gremlin.structure.Direction.OUT, STUDIES).hasNext()
+                            && interestCount >= minReq) {
+                        String name = (String)studentVertex.property("name").value();
+                        String majorName = (String)studentVertex.edges(org.apache.tinkerpop.gremlin.structure.Direction.OUT, STUDIES)
+                                .next().inVertex().property("name").value();
+                        result.put(name, majorName);
+                    }
                 }
+
+//                if (interestsSet.contains((String) interestVertex.property("name").value())) {
+//                    String foundOne = (String)studentVertex.property("name").value();
+//                    result.add(foundOne);
+//                    System.out.println("Found " + foundOne + " who also likes playing " + (String) interestVertex.property("name").value());
+//                    break; /* Go check for next possible person so that we will not have duplicates */
+//                }
+
             }
         }
 
@@ -180,65 +214,68 @@ public class JavaGraphOp {
      * @return List of interests that we share together
      * TODO: what is the format of the input for the interests? List of Strings? Or just strings
      */
-    public List<String> findCommonInterestsWithSomeone(String myName, String allMyInterests, String targetPerson) {
+    public List<String> findCommonInterestsWithSomeone(String sourcePerson, String targetPerson) {
+        List<String> result = new ArrayList<>();
         if (targetPerson == null || targetPerson.length() == 0) {
-            return "";
+            return result;
         }
 
+
         /* Check if this people is in our system */
-        Vertex targetVertex = g.traversal.has("name", targetPerson).next();
+        Vertex targetVertex = g.traversal().V().has("name", targetPerson).next();
+        Vertex sourceVertex = g.traversal().V().has("name", sourcePerson).next();
         if (targetVertex == null) {
             System.out.println("We cant find student " + targetPerson + "in database");
 //            throw new RequiredVertexNotFoundException("Expect to find user:" + targetPerson + " in our system but does not exist.");
         }
 
         /* Use a set to find the common interests we share */
-        String[] myInterests = allMyInterests.split(", ");
-        Set<String> myInterestSet = new HashSet<>();
-        for (string item : myInterests) {
-            myInterestSet.add(item);
+        Set<String> sourceInterestSet = new HashSet<>();
+        Iterator<Edge> sourceInterestItr = sourceVertex.edges(org.apache.tinkerpop.gremlin.structure.Direction.OUT, LIKES);
+        while (sourceInterestItr.hasNext()) {
+            sourceInterestSet.add((String)sourceInterestItr.next().inVertex().property("name").value());
         }
 
-        List<String> result = new ArrayList<>();
-        for (Vertex currentVertex : targetVertex.outE(LIKES).inV().toList()) {
-            String thisInterest = (String) currentVertex.property("name").value();
-            if (myInterestSet.contains(thisInterest)) {
-                System.out.println("Found a common interest: " + thisInterest);
-                result.add(thisInterest);
+        Iterator<Edge> targetInterestItr = targetVertex.edges(org.apache.tinkerpop.gremlin.structure.Direction.OUT, LIKES);
+        while (targetInterestItr.hasNext()) {
+            String interestName = (String)targetInterestItr.next().inVertex().property("name").value();
+            if (sourceInterestSet.contains(interestName)) {
+                result.add(interestName);
             }
         }
+
         return result;
     }
 
-    /**
-     * Query: How many people am I away from the person I wish I knew? (The shortest path between two nodes)
-     * @return The list of name of people that connects me to the person, if there is any
-     * TODO : make sure which of the version of finding the shortest path will work
-     */
-    public String getDegreeFromTargetPerson(String startPeople, String targetPeople) {
-        List<String> path = new ArrayList<>();
-
-        final Vertex vA = g.traversal().V().has("name", startPeople).next();
-        final Vertex vB = g.traversal().V().has("name", targetPeople).next();
-
-        final GremlinPipeline pipe = new GremlinPipeline(vA)
-                .as("person")
-                .both(/* HAS_PEOPLE_INTERESTEDIN, ATTENDS, LIKES*/ KNOWS) /* TODO : Understand what's happening here */
-                .loop("person", new PipeFunction<LoopPipe.LoopBundle, Boolean>() {
-                    @Override
-                    public Boolean compute(LoopPipe.LoopBundle loopBundle) {
-                        return loopBundle.getLoops() < MAX_LOOP_STEPS && loopBundle.getObject() != vB;
-                    }
-                }).path();
-
-        if (pipe.hasNext()) {
-            final List<CacheVertex> p = (ArrayList<CacheVertex>) pipe.next();
-            for (final CacheVertex v : p) {
-                path.add((String) ((Vertex)v).property("name").value());
-            }
-        }
-        return path.size() == 0 ? "Can't connect " + startPeople + " to " + targetPeople : path.toString();
-    }
+//    /**
+//     * Query: How many people am I away from the person I wish I knew? (The shortest path between two nodes)
+//     * @return The list of name of people that connects me to the person, if there is any
+//     * TODO : make sure which of the version of finding the shortest path will work
+//     */
+//    public String getDegreeFromTargetPerson(String startPeople, String targetPeople) {
+//        List<String> path = new ArrayList<>();
+//
+//        final Vertex vA = g.traversal().V().has("name", startPeople).next();
+//        final Vertex vB = g.traversal().V().has("name", targetPeople).next();
+//
+//        final GremlinPipeline pipe = new GremlinPipeline(vA)
+//                .as("person")
+//                .both(/* HAS_PEOPLE_INTERESTEDIN, ATTENDS, LIKES*/ KNOWS) /* TODO : Understand what's happening here */
+//                .loop("person", new PipeFunction<LoopPipe.LoopBundle, Boolean>() {
+//                    @Override
+//                    public Boolean compute(LoopPipe.LoopBundle loopBundle) {
+//                        return loopBundle.getLoops() < MAX_LOOP_STEPS && loopBundle.getObject() != vB;
+//                    }
+//                }).path();
+//
+//        if (pipe.hasNext()) {
+//            final List<CacheVertex> p = (ArrayList<CacheVertex>) pipe.next();
+//            for (final CacheVertex v : p) {
+//                path.add((String) ((Vertex)v).property("name").value());
+//            }
+//        }
+//        return path.size() == 0 ? "Can't connect " + startPeople + " to " + targetPeople : path.toString();
+//    }
 
     /**
      * TODO : is this version working?
@@ -246,7 +283,7 @@ public class JavaGraphOp {
      */
     public List<String> getShortestPathVersion2(String startPerson, String endPerson) {
         if (startPerson == null || startPerson.length() == 0 || endPerson == null || endPerson.length() == 0) {
-            return "";
+            return new ArrayList<String>();
         }
 
         GraphTraversalSource traversal = g.traversal();
@@ -257,15 +294,29 @@ public class JavaGraphOp {
         }
 
         List<String> result = new ArrayList();
-        traversal.V(fromNode).repeat(both().simplePath())
-                .until(is(toNode))
-                .limit(1) /* Only output 1 path for all possible results we have here */
-                .path()
-                .fill(result); /* TODO: Simple path???? */
+        GraphTraversal path = traversal.V(fromNode).repeat(out().simplePath()).until(is(toNode)).limit(1).path();
+        result = path.toList();
+//        traversal.V(fromNode).repeat(both().simplePath())
+//                .until(is(toNode))
+//                .limit(1) /* Only output 1 path for all possible results we have here */
+//                .path()
+//                .fill(result); /* TODO: Simple path???? */
 
         return result;
     }
 
+//    public List<String> addStudent(String name,
+//                                   String school,
+//                                   String interests,
+//                                   String major,
+//                                   String friends) {
+//        List<String> interestList = new ArrayList<>(Arrays.asList(interests.split("_")));
+//        List<String> friendList = new ArrayList<>(Arrays.asList(friends.split("_")));
+//
+//        Vertex newStudent = g.addVertex(T.label, PERSON, "name", name);
+//        //g.tx().commit();
+//
+//    }
 
     /**
      * Query: Recommend people you may want to meet (recommend friends' friend)
@@ -397,15 +448,6 @@ public class JavaGraphOp {
         public Pair(String name, int num) {
             this.name = name;
             this.number = num;
-        }
-    }
-
-    /**
-     * Thrown when we did not find the vertex that we are looking for in our database.
-     */
-    private class RequiredVertexNotFoundException extends RuntimeException {
-        public RequiredVertexNotFoundException(String cause) {
-            super(cause);
         }
     }
 }
