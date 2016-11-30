@@ -279,7 +279,7 @@ public class JavaGraphOp {
 
     /**
      * TODO : is this version working?
-     * Another version of finding the shortest path between two user in the system.
+     * Query: Check if you can reach to this person with in Six degrees.
      */
     public List<String> getShortestPathVersion2(String startPerson, String endPerson) {
         if (startPerson == null || startPerson.length() == 0 || endPerson == null || endPerson.length() == 0) {
@@ -289,20 +289,68 @@ public class JavaGraphOp {
         GraphTraversalSource traversal = g.traversal();
         Vertex fromNode = traversal.V().has("name", startPerson).next();
         Vertex toNode = traversal.V().has("name", endPerson).next();
-        if (fromNode == null || toNode == null) {
-            throw new RequiredVertexNotFoundException("Expect both users in our system but somehow at least one of them is missing.");
+        if (fromNode == null) {
+            System.out.println("Cannot find user: " + startPerson + " in our system");
+            return null;
+//            throw new RequiredVertexNotFoundException("Expect both users in our system but somehow at least one of them is missing.");
+        }
+        if (toNode == null) {
+            return null;
+            System.out.println("Cannot find user: " + endPerson + " in our system");
         }
 
-        List<String> result = new ArrayList();
-        GraphTraversal path = traversal.V(fromNode).repeat(out().simplePath()).until(is(toNode)).limit(1).path();
-        result = path.toList();
+//        List<String> result = new ArrayList();
+//        GraphTraversal path = traversal.V(fromNode).repeat(out().simplePath()).until(is(toNode)).limit(1).path();
+//        result = path.toList();
 //        traversal.V(fromNode).repeat(both().simplePath())
 //                .until(is(toNode))
 //                .limit(1) /* Only output 1 path for all possible results we have here */
 //                .path()
 //                .fill(result); /* TODO: Simple path???? */
 
-        return result;
+
+        // Use a map to track the degree for each vertex
+        Map<String, Interger> distanceMap = new HashMap<>();
+        Map<String, List<String>> pathMap = new HashMap<>(); // 以当前名字为结尾的路劲
+        List<String> resultPath = new ArrayList<>();
+        Queue<Vertex> queue = new LinkedList<>();
+        distanceMap.put(startPerson, 0);
+        pathMap.put(startPerson, new ArrayList<>());
+        queue.offer(fromNode);
+        int MAX_STEPS = 6;
+
+        // Traverse the graph and
+        while (!queue.isEmpty) {
+            Vertex currentVertex = queue.poll();
+            int currentDegree = distanceMap.get((String)currentVertex.property("name").value());
+            if (currentDegree >= MAX_STEPS) {
+                continue;
+            }
+
+            Iterator<Edge> edgeIterator = targetVertex.edges(org.apache.tinkerpop.gremlin.structure.Direction.OUT, KNOWS);
+            while (edgeIterator.hasNext()) {
+                Vertex friendVertex = edgeIterator.next().inVertex();
+                String friendName = (String)friendVertex.property("name").value();
+                if (friendName.equals(endPerson)) {
+                    return pathMap.get((String)currentVertex.property("name").value()).add(friendName);
+                }
+
+                if (!distanceMap.containsKey((String)friendVertex.property("name").value())) {
+                    pathMap.put(friendName, pathMap.get((String)currentVertex.property("name").value()).add(friendName));
+                    distanceMap.put(friendName, currentDegree + 1);
+                    queue.offer(friendVertex);
+                } else {
+                    // Update path when necessary
+                    if (currentDegree + 1 < distanceMap.get((String)friendVertex.property("name").value())) {
+                        distanceMap.put((String)friendVertex.property("name").value(), currentDegree + 1);
+                        pathMap.put(friendName, pathMap.get((String)currentVertex.property("name").value()).add(friendName));
+                        queue.offer(friendVertex);
+                    }
+                }
+            }
+        }
+
+        return new ArrayList<>();
     }
 
     public String addFriend(String sourceName, String targetName) {
