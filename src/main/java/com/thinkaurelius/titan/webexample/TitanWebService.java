@@ -6,7 +6,9 @@ import org.codehaus.jettison.json.JSONObject;
 import org.elasticsearch.search.aggregations.InternalAggregation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.SessionAttributes;
 
 import javax.annotation.PostConstruct;
 import javax.ws.rs.*;
@@ -135,6 +137,17 @@ public class TitanWebService {
     }
 
     @POST
+    @Path("/addFriend/{sourceName}/{targetName}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public @ResponseBody String addFriend(@PathParam("sourceName") String sourceName,
+                                          @PathParam("targetName") String targetName) throws JSONException {
+        String status = operationHandeler.addFriend(sourceName, targetName);
+        JSONObject res = new JSONObject();
+        res.put("status", status);
+        return res.toString();
+    }
+
+    @POST
     @Path("/addStudent/{studentName}/{schoolName}/{interestNames}/{majorName}/{friendNames}")
     @Produces(MediaType.APPLICATION_JSON)
     public @ResponseBody String addStudent(@PathParam("studentName") String studentName,
@@ -142,31 +155,23 @@ public class TitanWebService {
                                            @PathParam("interestNames") String interestName,
                                            @PathParam("majorName") String majorName,
                                            @PathParam("friendNames") String friendNames) throws JSONException {
-//        List<String> notFoundName = operationHandeler.addStudent(
-//                studentName,
-//                schoolName,
-//                interestName,
-//                majorName,
-//                friendNames
-//                );
-//        JSONArray results = new JSONArray();
-//
-//        for (String name : notFoundName) {
-//            JSONObject person = new JSONObject();
-//            person.put("not_found", name);
-//            results.put(person);
-//        }
+        List<String> notFoundName = operationHandeler.addStudent(
+                studentName,
+                schoolName,
+                interestName,
+                majorName,
+                friendNames
+                );
+        JSONArray results = new JSONArray();
 
-        return "";
+        for (String name : notFoundName) {
+            JSONObject person = new JSONObject();
+            person.put("not_found", name);
+            results.put(person);
+        }
+
+        return results.toString();
     }
-
-//    @GET
-//    @Path("/getVerticesCount")
-//    @Produces(MediaType.TEXT_PLAIN)
-//    public String getVerticesCount(@Context UriInfo info) throws JSONException {
-//        String res = operationHandeler.getVerticesCount();
-//        return "\"" + res + "\"";
-//    }
 //
 //    @GET
 //    @Path("/school/uf")

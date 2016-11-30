@@ -305,18 +305,80 @@ public class JavaGraphOp {
         return result;
     }
 
-//    public List<String> addStudent(String name,
-//                                   String school,
-//                                   String interests,
-//                                   String major,
-//                                   String friends) {
-//        List<String> interestList = new ArrayList<>(Arrays.asList(interests.split("_")));
-//        List<String> friendList = new ArrayList<>(Arrays.asList(friends.split("_")));
-//
-//        Vertex newStudent = g.addVertex(T.label, PERSON, "name", name);
-//        //g.tx().commit();
-//
-//    }
+    public String addFriend(String sourceName, String targetName) {
+        if (sourceName == null || sourceName.length() == 0
+                || targetName == null || targetName.length() == 0) {
+            return "404";
+        }
+
+        Iterator<Vertex> sourceItr = g.traversal().V().has("name", sourceName);
+        Iterator<Vertex> targetItr = g.traversal().V().has("name", targetName);
+
+        if (!sourceItr.hasNext() || !targetItr.hasNext()) {
+            return "404";
+        }
+
+        Vertex sourceVertex = sourceItr.next();
+        Vertex targetVertex = targetItr.next();
+
+        sourceVertex.addEdge(KNOWS, targetVertex);
+        targetVertex.addEdge(KNOWS, sourceVertex);
+
+        g.tx().commit();
+
+        return "200";
+    }
+
+    public List<String> addStudent(String name,
+                                   String school,
+                                   String interests,
+                                   String major,
+                                   String friends) {
+        List<String> notFoundList = new ArrayList<>();
+        if (school == null || school.length() == 0 || name == null || name.length() == 0
+                || major == null || major.length() == 0) {
+            return notFoundList;
+        }
+
+        List<String> interestList = new ArrayList<>(Arrays.asList(interests.split("_")));
+        List<String> friendList = new ArrayList<>(Arrays.asList(friends.split("_")));
+
+        Vertex newStudent = g.addVertex(T.label, PERSON, "name", name);
+
+        Vertex schoolVertex = g.traversal().V().has("name", school).next();
+        newStudent.addEdge(SCHOOL, schoolVertex);
+        schoolVertex.addEdge(HAS_STUDENT, newStudent);
+
+        Vertex majorVertex = g.traversal().V().has("name", major).next();
+        newStudent.addEdge(STUDIES, majorVertex);
+        majorVertex.addEdge(HAS_STUDENT_STUDY, newStudent);
+
+        for (String interest : interestList) {
+            Iterator<Vertex> interestItr = g.traversal().V().has("name", interest);
+            if (!interestItr.hasNext()) {
+                continue;
+            }
+            Vertex interestVertex = interestItr.next();
+
+            newStudent.addEdge(LIKES, interestVertex);
+            interestVertex.addEdge(HAS_PEOPLE_INTERESTEDIN, newStudent);
+        }
+
+        for (String friend : friendList) {
+            Iterator<Vertex> friendItr = g.traversal().V().has("name", friend);
+            if (!friendItr.hasNext()) {
+                notFoundList.add(friend);
+                continue;
+            }
+            Vertex friendVertex = friendItr.next();
+            newStudent.addEdge(KNOWS, friendVertex);
+            friendVertex.addEdge(KNOWS, newStudent);
+        }
+
+        g.tx().commit();
+
+        return notFoundList;
+    }
 
     /**
      * Query: Recommend people you may want to meet (recommend friends' friend)
